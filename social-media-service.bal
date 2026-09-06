@@ -3,7 +3,7 @@ import ballerina/time;
 import ballerina/http;
 
 type User record {|
-    readonly string userId;
+    readonly int userId;
     string name;
     int age;
     time:Date birthDate;
@@ -27,9 +27,9 @@ type UserNotFound record {|
 |};
 
 // Sample Data
-table<User> key(userId) users = table [
+table<User> key(userId) userTable = table [
     {
-        userId: "1",
+        userId: 1,
         name: "John Doe",
         age: 28,
         birthDate: {year: 1996, month: 5, day: 15}
@@ -38,11 +38,11 @@ table<User> key(userId) users = table [
 
 service / on new http:Listener(9090) {
     resource function get users() returns User[]|error {
-        return users.toArray();
+        return userTable.toArray();
     }
 
     resource function get users/[int id] () returns User|UserNotFound|error {
-        User? user = users[id.toString()];
+        User? user = userTable[id];
         if user is () {
             UserNotFound userNotFound = {
                 body: {msg: string `id: ${id}`, details: string `user/${id}`, timeStamp: time:utcNow()}
@@ -51,5 +51,32 @@ service / on new http:Listener(9090) {
         }
         return user;
     }
+
+    resource function post users(NewUser newUser) returns http:Created|error {
+        // int userId;
+        int userId = userTable.length() + 1; 
+        while userTable[userId + 1] is User {
+            userId += 1;
+        }
+
+        userTable.add({userId: userId, ...newUser});
+        
+        return http:CREATED;
+    }
+
+    resource function delete users/[int id]() returns http:NoContent|UserNotFound|error {
+        User? existingUser = userTable[id];
+        
+        if existingUser is () {
+            UserNotFound userNotFound = {
+                body: {msg: string `id: ${id}`, details: string `user/${id}`, timeStamp: time:utcNow()}
+            };
+            return userNotFound;
+        }
+
+        _ = userTable.remove(id);
+        return {};
+    }
+
 }
 
