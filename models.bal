@@ -75,3 +75,25 @@ type ErrorDetails record {|
     string message;
     string details;
 |};
+
+type Created_date record {|
+    int year;
+    int month;
+    int day;
+    json...;
+|};
+
+type Meta record {|
+    string[] tags;
+    string category;
+    Created_date created_date;
+    json...;
+|};
+
+type PostWithMeta record {|
+    int id;
+    string description;
+    Meta meta;
+    json...;
+|};
+

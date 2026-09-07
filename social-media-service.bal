@@ -1,10 +1,10 @@
+import ballerina/http;
 import ballerina/io as _;
+import ballerina/sql;
+import ballerina/time;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
-import ballerina/time;
-import ballerina/http;
-import ballerina/sql;
-
+import ballerina/regex;
 
 configurable DBConfig dbConfig = ?;
 
@@ -13,14 +13,15 @@ final mysql:Client dbClient = check new (...dbConfig);
 service /social\-media on new http:Listener(9090) {
     resource function get users() returns User[]|error {
         stream<User, sql:Error?> userStream = dbClient->query(`SELECT * FROM users`);
-        return from var user in userStream select user;
+        return from var user in userStream
+            select user;
     }
 
-    resource function get users/[int id] () returns User|UserNotFound|error {
+    resource function get users/[int id]() returns User|UserNotFound|error {
         User|sql:Error user = dbClient->queryRow(`SELECT * FROM users where id = ${id}`);
         if user is sql:NoRowsError {
             UserNotFound userNotFound = {
-                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}` , timeStamp: time:utcNow()}
+                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}`, timeStamp: time:utcNow()}
             };
             return userNotFound;
         }
@@ -51,24 +52,25 @@ service /social\-media on new http:Listener(9090) {
         }
     }
 
-    resource function get users/[int id]/posts() returns Post[]|UserNotFound|error {
+    resource function get users/[int id]/posts() returns PostWithMeta[]|UserNotFound|error {
         User|sql:Error user = dbClient->queryRow(`SELECT * FROM users where id = ${id}`);
         if user is sql:NoRowsError {
             UserNotFound userNotFound = {
-                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}` , timeStamp: time:utcNow()}
+                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}`, timeStamp: time:utcNow()}
             };
             return userNotFound;
         }
 
         stream<Post, sql:Error?> postStream = check dbClient->query(`SELECT * FROM posts WHERE user_id = ${id}`);
-        return from var post in postStream select post;
+        Post[]| error posts = from var post in postStream select post;
+        return mapToPostWithMeta(check posts);
     }
 
     resource function post users/[int id]/posts(NewPost newPost) returns http:Created|UserNotFound|PostForbidden|error {
         User|sql:Error user = check dbClient->queryRow(`SELECT * FROM users where id = ${id}`);
         if user is sql:NoRowsError {
             UserNotFound userNotFound = {
-                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}` , timeStamp: time:utcNow()}
+                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}`, timeStamp: time:utcNow()}
             };
             return userNotFound;
         }
@@ -87,3 +89,17 @@ service /social\-media on new http:Listener(9090) {
 
 }
 
+function mapToPostWithMeta(Post[] post) returns PostWithMeta[] => from var postItem in post
+    select {
+        id: postItem.id, 
+        description: postItem.description, 
+        meta: {
+            tags: regex:split(postItem.tags, ","), 
+            category: postItem.category, 
+            created_date: {
+                year: postItem.created_date.year, 
+                month: postItem.created_date.month, 
+                day: postItem.created_date.day
+            }
+        }
+    };
