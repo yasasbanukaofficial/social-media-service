@@ -422,7 +422,6 @@ dependencies = [
 	{org = "ballerinax", name = "mysql.driver"}
 ]
 modules = [
-	{org = "bezerk", packageName = "social_media_service", moduleName = "social_media_service"},
-	{org = "bezerk", packageName = "social_media_service", moduleName = "social_media_service.mysql"}
+	{org = "bezerk", packageName = "social_media_service", moduleName = "social_media_service"}
 ]
 

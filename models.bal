@@ -2,7 +2,7 @@ import ballerina/http;
 import ballerina/sql;
 import ballerina/time;
 
-type User record {|
+public type User record {|
     @sql:Column {
         name: "id"
     }
@@ -21,24 +21,24 @@ type User record {|
     string mobileNumber;
 |};
 
-type NewUser record {|
+public type NewUser record {|
     string name;
     time:Date birthDate;
     string mobileNumber;
 |};
 
-type ErrorMsg record {|
+public type ErrorMsg record {|
     string msg;
     string details;
     time:Utc timeStamp;
 |};
 
-type UserNotFound record {|
+public type UserNotFound record {|
     *http:NotFound;
     ErrorMsg body;
 |};
 
-type DBConfig record {|
+public type DBConfig record {|
     string host;
     string user;
     string password;
@@ -47,7 +47,7 @@ type DBConfig record {|
 |};
 
 // post representations
-type Post record {|
+public type Post record {|
     int id;
     string description;
     string tags;
@@ -65,32 +65,32 @@ public type NewPost record {|
     string category;
 |};
 
-type PostForbidden record {|
+public type PostForbidden record {|
     *http:Forbidden;
     ErrorDetails body;
 |};
 
-type ErrorDetails record {|
+public type ErrorDetails record {|
     time:Utc timeStamp;
     string message;
     string details;
 |};
 
-type Created_date record {|
+public type Created_date record {|
     int year;
     int month;
     int day;
     json...;
 |};
 
-type Meta record {|
+public type Meta record {|
     string[] tags;
     string category;
     Created_date created_date;
     json...;
 |};
 
-type PostWithMeta record {|
+public type PostWithMeta record {|
     int id;
     string description;
     Meta meta;
