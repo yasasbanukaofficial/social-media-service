@@ -56,7 +56,7 @@ service / on new http:Listener(9090) {
     }
 
     resource function get users/[int id] () returns User|UserNotFound|error {
-        User|sql:Error user = dbClient->queryRow(`SELECT * FROM users where userId = ${id}`);
+        User|sql:Error user = dbClient->queryRow(`SELECT * FROM users where id = ${id}`);
         if user is sql:NoRowsError {
             UserNotFound userNotFound = {
                 body: {msg: string `User with the id ${id} not found`, details: string `user/${id}` , timeStamp: time:utcNow()}
@@ -78,19 +78,17 @@ service / on new http:Listener(9090) {
         }
     }
 
-    // resource function delete users/[int id]() returns http:NoContent|UserNotFound|error {
-    //     User? existingUser = userTable[id];
-        
-    //     if existingUser is () {
-    //         UserNotFound userNotFound = {
-    //             body: {msg: string `id: ${id}`, details: string `user/${id}`, timeStamp: time:utcNow()}
-    //         };
-    //         return userNotFound;
-    //     }
+    resource function delete users/[int id]() returns http:NoContent|UserNotFound|error {
+        sql:ExecutionResult rslt = check dbClient->execute(`
+            DELETE FROM users where id = ${id};
+        `);
 
-    //     _ = userTable.remove(id);
-    //     return http:NO_CONTENT;
-    // }
+        if rslt.affectedRowCount > 0 {
+            return http:NO_CONTENT;
+        } else {
+            return error("User not deleted");
+        }
+    }
 
 }
 
