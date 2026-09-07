@@ -26,8 +26,8 @@ type User record {|
 
 type NewUser record {|
     string name;
-    int age;
     time:Date birthDate;
+    string mobileNumber;
 |};
 
 type ErrorMsg record {|
@@ -68,8 +68,8 @@ service / on new http:Listener(9090) {
 
     resource function post users(NewUser newUser) returns http:Created|error {
         sql:ExecutionResult rslt = check dbClient->execute(`
-            INSERT INTO Users (name, age, birthDate) 
-            VALUES (${newUser.name}, ${newUser.age}, ${newUser.birthDate});
+            INSERT INTO users (name, birth_Date, mobile_number) 
+            VALUES (${newUser.name}, ${newUser.birthDate}, ${newUser.mobileNumber});
         `);
         if rslt.affectedRowCount > 0 {
             return http:CREATED;
