@@ -5,55 +5,12 @@ import ballerina/time;
 import ballerina/http;
 import ballerina/sql;
 
-type User record {|
-    @sql:Column {
-        name: "id"
-    }
-    readonly int userId;
-    string name;
-    int age;
-    
-    @sql:Column {
-        name: "birth_date"
-    }
-    time:Date birthDate;
-    
-    @sql:Column {
-        name: "mobile_number"
-    }
-    string mobileNumber;
-|};
-
-type NewUser record {|
-    string name;
-    time:Date birthDate;
-    string mobileNumber;
-|};
-
-type ErrorMsg record {|
-    string msg;
-    string details;
-    time:Utc timeStamp;
-|};
-
-type UserNotFound record {|
-    *http:NotFound;
-    ErrorMsg body;
-|};
-
-type DBConfig record {|
-    string host;
-    string user;
-    string password;
-    string database;
-    int port;
-|};
 
 configurable DBConfig dbConfig = ?;
 
 final mysql:Client dbClient = check new (...dbConfig);
 
-service / on new http:Listener(9090) {
+service /social\-media on new http:Listener(9090) {
     resource function get users() returns User[]|error {
         stream<User, sql:Error?> userStream = dbClient->query(`SELECT * FROM users`);
         return from var user in userStream select user;
@@ -91,6 +48,40 @@ service / on new http:Listener(9090) {
             return http:NO_CONTENT;
         } else {
             return error("User not deleted");
+        }
+    }
+
+    resource function get users/[int id]/posts() returns Post[]|UserNotFound|error {
+        User|sql:Error user = dbClient->queryRow(`SELECT * FROM users where id = ${id}`);
+        if user is sql:NoRowsError {
+            UserNotFound userNotFound = {
+                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}` , timeStamp: time:utcNow()}
+            };
+            return userNotFound;
+        }
+
+        stream<Post, sql:Error?> postStream = check dbClient->query(`SELECT * FROM posts WHERE user_id = ${id}`);
+        return from var post in postStream select post;
+    }
+
+    resource function post users/[int id]/posts(NewPost newPost) returns http:Created|UserNotFound|PostForbidden|error {
+        User|sql:Error user = check dbClient->queryRow(`SELECT * FROM users where id = ${id}`);
+        if user is sql:NoRowsError {
+            UserNotFound userNotFound = {
+                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}` , timeStamp: time:utcNow()}
+            };
+            return userNotFound;
+        }
+
+        sql:ExecutionResult rslt = check dbClient->execute(
+            `INSERT INTO posts (description, tags, category, user_id)
+             VALUES (${newPost.description}, ${newPost.tags}, ${newPost.category}, ${id});`
+        );
+
+        if rslt.affectedRowCount > 0 {
+            return http:CREATED;
+        } else {
+            return error("Error when adding new post");
         }
     }
 

@@ -7,7 +7,7 @@ CREATE TABLE social_media_database.posts (
     id INT NOT NULL auto_increment PRIMARY KEY,
     description VARCHAR(255),
     category VARCHAR(255),
-    created_date DATE,
+    created_date DATE DEFAULT (CURRENT_DATE),
     tags VARCHAR(255),
     user_id INT
 );
