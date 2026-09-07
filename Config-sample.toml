@@ -1,0 +1,6 @@
+[dbConfig]
+host = "localhost"
+port = 3307
+user = "root"
+password = "root"
+database = "social_media_database"
