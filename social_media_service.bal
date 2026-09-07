@@ -67,12 +67,16 @@ service /social\-media on new http:Listener(9090) {
     }
 
     resource function get users/[int id]/posts() returns PostWithMeta[]|UserNotFound|error {
-        User|sql:Error user = socialMediaDB->queryRow(`SELECT * FROM users where id = ${id}`);
-        if user is sql:NoRowsError {
-            UserNotFound userNotFound = {
-                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}`, timeStamp: time:utcNow()}
-            };
-            return userNotFound;
+        do {
+            _ = check socialMediaDB->queryRow(`SELECT * FROM users where id = ${id}`, returnType = User);
+        } on fail var user {
+            if user is sql:NoRowsError {
+                UserNotFound userNotFound = {
+                    body: {msg: string `User with the id ${id} not found`, details: string `user/${id}`, timeStamp: time:utcNow()}
+                };
+                return userNotFound;
+            }
+        
         }
 
         stream<Post, sql:Error?> postStream = check socialMediaDB->query(`SELECT * FROM posts WHERE user_id = ${id}`);
