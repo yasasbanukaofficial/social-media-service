@@ -1,12 +1,27 @@
 import ballerina/io as _;
+import ballerinax/mysql;
+import ballerinax/mysql.driver as _;
 import ballerina/time;
 import ballerina/http;
+import ballerina/sql;
 
 type User record {|
+    @sql:Column {
+        name: "id"
+    }
     readonly int userId;
     string name;
     int age;
+    
+    @sql:Column {
+        name: "birth_date"
+    }
     time:Date birthDate;
+    
+    @sql:Column {
+        name: "mobile_number"
+    }
+    string mobileNumber;
 |};
 
 type NewUser record {|
@@ -26,26 +41,25 @@ type UserNotFound record {|
     ErrorMsg body;
 |};
 
-// Sample Data
-table<User> key(userId) userTable = table [
-    {
-        userId: 1,
-        name: "John Doe",
-        age: 28,
-        birthDate: {year: 1996, month: 5, day: 15}
-    }
-];
+final mysql:Client dbClient = check new (
+    host = "localhost",
+    port = 3307,
+    user = "root",
+    password = "root",
+    database = "social_media_database"
+);
 
 service / on new http:Listener(9090) {
     resource function get users() returns User[]|error {
-        return userTable.toArray();
+        stream<User, sql:Error?> userStream = dbClient->query(`SELECT * FROM users`);
+        return from var user in userStream select user;
     }
 
     resource function get users/[int id] () returns User|UserNotFound|error {
-        User? user = userTable[id];
-        if user is () {
+        User|sql:Error user = dbClient->queryRow(`SELECT * FROM users where userId = ${id}`);
+        if user is sql:NoRowsError {
             UserNotFound userNotFound = {
-                body: {msg: string `id: ${id}`, details: string `user/${id}`, timeStamp: time:utcNow()}
+                body: {msg: string `User with the id ${id} not found`, details: string `user/${id}` , timeStamp: time:utcNow()}
             };
             return userNotFound;
         }
@@ -53,30 +67,30 @@ service / on new http:Listener(9090) {
     }
 
     resource function post users(NewUser newUser) returns http:Created|error {
-        // int userId;
-        int userId = userTable.length() + 1; 
-        while userTable[userId + 1] is User {
-            userId += 1;
+        sql:ExecutionResult rslt = check dbClient->execute(`
+            INSERT INTO Users (name, age, birthDate) 
+            VALUES (${newUser.name}, ${newUser.age}, ${newUser.birthDate});
+        `);
+        if rslt.affectedRowCount > 0 {
+            return http:CREATED;
+        } else {
+            return error("User not created");
         }
-
-        userTable.add({userId: userId, ...newUser});
-        
-        return http:CREATED;
     }
 
-    resource function delete users/[int id]() returns http:NoContent|UserNotFound|error {
-        User? existingUser = userTable[id];
+    // resource function delete users/[int id]() returns http:NoContent|UserNotFound|error {
+    //     User? existingUser = userTable[id];
         
-        if existingUser is () {
-            UserNotFound userNotFound = {
-                body: {msg: string `id: ${id}`, details: string `user/${id}`, timeStamp: time:utcNow()}
-            };
-            return userNotFound;
-        }
+    //     if existingUser is () {
+    //         UserNotFound userNotFound = {
+    //             body: {msg: string `id: ${id}`, details: string `user/${id}`, timeStamp: time:utcNow()}
+    //         };
+    //         return userNotFound;
+    //     }
 
-        _ = userTable.remove(id);
-        return {};
-    }
+    //     _ = userTable.remove(id);
+    //     return http:NO_CONTENT;
+    // }
 
 }
 
