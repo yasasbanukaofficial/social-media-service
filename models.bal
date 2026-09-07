@@ -1,12 +1,18 @@
 import ballerina/http;
 import ballerina/sql;
 import ballerina/time;
+import ballerina/constraint;
 
 public type User record {|
     @sql:Column {
         name: "id"
     }
     readonly int userId;
+
+    @constraint:String{
+        maxLength: 5,
+        minLength: 1
+    }
     string name;
     int age;
     
