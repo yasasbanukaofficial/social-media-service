@@ -41,13 +41,17 @@ type UserNotFound record {|
     ErrorMsg body;
 |};
 
-final mysql:Client dbClient = check new (
-    host = "localhost",
-    port = 3307,
-    user = "root",
-    password = "root",
-    database = "social_media_database"
-);
+type DBConfig record {|
+    string host;
+    string user;
+    string password;
+    string database;
+    int port;
+|};
+
+configurable DBConfig dbConfig = ?;
+
+final mysql:Client dbClient = check new (...dbConfig);
 
 service / on new http:Listener(9090) {
     resource function get users() returns User[]|error {
